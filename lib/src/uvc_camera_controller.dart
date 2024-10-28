@@ -63,6 +63,18 @@ class UVCCameraController {
     }
   }
 
+  Future<String?> scanBarcode() async {
+    try {
+      // Gọi hàm scanBarcode từ phía Android qua MethodChannel
+      String? barcode = await _cameraChannel?.invokeMethod('scanBarcode');
+      debugPrint("Barcode: $barcode");
+      return barcode;
+    } catch (e) {
+      debugPrint("Barcode scan error: $e");
+      return null;
+    }
+  }
+
   Future<void> initializeCamera() async {
     await _cameraChannel?.invokeMethod('initializeCamera');
   }

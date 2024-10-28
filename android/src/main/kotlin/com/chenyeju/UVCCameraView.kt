@@ -1,5 +1,7 @@
 package com.chenyeju
 
+import com.google.zxing.*
+import com.google.zxing.common.HybridBinarizer
 import android.Manifest
 import android.app.Activity
 import android.app.Application
@@ -324,6 +326,39 @@ internal class UVCCameraView(
         val width = map["width"] as Int
         val height = map["height"] as Int
         getCurrentCamera()?.updateResolution(width, height)
+    }
+
+    fun scanBarcode(callback: UVCStringCallback) {
+    // Kiểm tra camera đã mở chưa
+    if (!isCameraOpened()) {
+        callFlutter("Camera chưa được mở")
+        setCameraERRORState("Camera chưa mở")
+        return
+    }
+
+    // Cài đặt callback khi nhận dữ liệu mã vạch từ frame
+        getCurrentCamera()?.setEncodeDataCallBack(object : IEncodeDataCallBack {
+            override fun onEncodeData(
+                type: IEncodeDataCallBack.DataType,
+                buffer: ByteBuffer,
+                offset: Int,
+                size: Int,
+                timestamp: Long
+            ) {
+                val data = ByteArray(size)
+                buffer.get(data, offset, size)
+
+                // Giải mã mã vạch từ dữ liệu hình ảnh
+                val source = PlanarYUVLuminanceSource(data, 640, 480, 0, 0, 640, 480, false)
+                val binaryBitmap = BinaryBitmap(HybridBinarizer(source))
+                try {
+                    val result = MultiFormatReader().decode(binaryBitmap)
+                    callback.onSuccess(result.text) // Trả về chuỗi mã vạch đọc được
+                } catch (e: NotFoundException) {
+                    // Không tìm thấy mã vạch
+                }
+            }
+        })
     }
 
    fun getCurrentCameraRequestParameters(): String? {

@@ -62,6 +62,7 @@ android {
     }
 
     dependencies {
+        implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
         implementation 'com.github.chenyeju295.AndroidUSBCamera:libausbc:3.3.6'
         implementation 'com.github.chenyeju295.AndroidUSBCamera:libuvc:3.3.6'
         implementation 'androidx.appcompat:appcompat:1.6.1'

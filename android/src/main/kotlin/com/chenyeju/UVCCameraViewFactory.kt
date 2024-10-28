@@ -6,42 +6,45 @@ import io.flutter.plugin.common.StandardMessageCodec
 import io.flutter.plugin.platform.PlatformView
 import io.flutter.plugin.platform.PlatformViewFactory
 
+class UVCCameraViewFactory(
+    private val plugin: FlutterUVCCameraPlugin,
+    private var channel: MethodChannel
+) : PlatformViewFactory(StandardMessageCodec.INSTANCE) {
 
-class UVCCameraViewFactory(private val plugin: FlutterUVCCameraPlugin,private var channel: MethodChannel) : PlatformViewFactory(StandardMessageCodec.INSTANCE){
-    private lateinit var cameraView : UVCCameraView
+    private lateinit var cameraView: UVCCameraView
 
     override fun create(context: Context, viewId: Int, args: Any?): PlatformView {
-        cameraView = UVCCameraView(context, this.channel,args)
+        cameraView = UVCCameraView(context, this.channel, args)
         plugin.setPermissionResultListener(cameraView)
         return cameraView
     }
 
-
-    fun initCamera(){
-        cameraView.initCamera();
+    fun initCamera() {
+        cameraView.initCamera()
     }
 
-    fun openUVCCamera(){
+    fun openUVCCamera() {
         cameraView.openUVCCamera()
     }
 
-    fun takePicture(callback: UVCStringCallback){
+    fun takePicture(callback: UVCStringCallback) {
         cameraView.takePicture(callback)
     }
-    fun captureVideo(callback: UVCStringCallback){
+
+    fun captureVideo(callback: UVCStringCallback) {
         cameraView.captureVideo(callback)
     }
 
-    fun captureStreamStart(){
+    fun captureStreamStart() {
         cameraView.captureStreamStart()
     }
-    fun captureStreamStop(){
+
+    fun captureStreamStop() {
         cameraView.captureStreamStop()
     }
 
-
-    fun getAllPreviewSizes() = cameraView.getAllPreviewSizes();
-    fun getCurrentCameraRequestParameters() = cameraView.getCurrentCameraRequestParameters();
+    fun getAllPreviewSizes() = cameraView.getAllPreviewSizes()
+    fun getCurrentCameraRequestParameters() = cameraView.getCurrentCameraRequestParameters()
 
     fun closeCamera() {
         cameraView.closeCamera()
@@ -51,5 +54,8 @@ class UVCCameraViewFactory(private val plugin: FlutterUVCCameraPlugin,private va
         cameraView.updateResolution(arguments)
     }
 
-
+    // Thêm phương thức scanBarcode
+    fun scanBarcode(callback: UVCStringCallback) {
+        cameraView.scanBarcode(callback)
+    }
 }

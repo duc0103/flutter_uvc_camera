@@ -126,6 +126,16 @@ class FlutterUVCCameraPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 mUVCCameraViewFactory.updateResolution(call.arguments())
             }
 
+           "scanBarcode" -> {
+            mUVCCameraViewFactory.scanBarcode(object : UVCStringCallback {
+                override fun onSuccess(scanResult: String) {
+                    result.success(scanResult) // Trả về mã vạch quét được
+                }
+                override fun onError(error: String) {
+                    result.error("ERROR", error, null)
+                }
+            })
+        }
             "getPlatformVersion" -> {
                 result.success("Android " + Build.VERSION.RELEASE)
             }

@@ -59,6 +59,7 @@ class UVCCameraController {
         final Map<dynamic, dynamic> args = call.arguments;
         // capture H264 & AAC only
         debugPrint(args.toString());
+        debugPrint(args['barcode']);
         break;
     }
   }

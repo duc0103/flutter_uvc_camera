@@ -61,23 +61,6 @@ class _CameraTestState extends State<CameraTest> {
                     cameraController?.openUVCCamera();
                   },
                 ),
-                TextButton(
-                  child: const Text('scannnn'),
-                  onPressed: () async {
-                      String? a =  await cameraController?.scanBarcode();
-                      if(a == null) {
-                        return;
-                      }
-                      // ignore: use_build_context_synchronously
-                      showDialog(context: context, builder: (context) {
-                        return Container(
-                          width: 300,
-                          height: 300,
-                          child: Text(a ?? ''),
-                        );
-                      },);
-                  },
-                ),
               ],
             ),
             if (cameraController != null)

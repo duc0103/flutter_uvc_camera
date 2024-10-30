@@ -34,7 +34,9 @@ import com.jiangdg.ausbc.camera.bean.CameraRequest
 import com.jiangdg.ausbc.render.env.RotateType
 import com.jiangdg.ausbc.utils.Logger
 import com.jiangdg.ausbc.utils.SettableFuture
+import com.jiangdg.ausbc.utils.ToastUtils
 import com.jiangdg.ausbc.widget.AspectRatioTextureView
+import com.jiangdg.ausbc.widget.CaptureMediaView
 import com.jiangdg.ausbc.widget.IAspectRatio
 import com.jiangdg.usb.USBMonitor
 import com.jiangdg.uvc.IButtonCallback
@@ -43,16 +45,6 @@ import io.flutter.plugin.platform.PlatformView
 import java.nio.ByteBuffer
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-import com.google.zxing.*
-import com.google.zxing.common.HybridBinarizer
-import android.media.MediaCodec
-import android.media.MediaFormat
-import android.os.Build
-import android.support.annotation.RequiresApi
-import com.google.zxing.BinaryBitmap
-import com.google.zxing.MultiFormatReader
-import com.google.zxing.NotFoundException
-import com.google.zxing.PlanarYUVLuminanceSource
 
 internal class UVCCameraView(
     private val mContext: Context,
@@ -85,7 +77,7 @@ internal class UVCCameraView(
 //        }
 //    }
 
-    fun getView(): View {
+    override fun getView(): View {
         return mViewBinding.root
     }
 
@@ -334,39 +326,6 @@ internal class UVCCameraView(
         getCurrentCamera()?.updateResolution(width, height)
     }
 
-    fun scanBarcode(callback: UVCStringCallback) {
-    // Kiểm tra camera đã mở chưa
-    if (!isCameraOpened()) {
-        callFlutter("Camera chưa được mở")
-        setCameraERRORState("Camera chưa mở")
-        return
-    }
-
-    // Cài đặt callback khi nhận dữ liệu mã vạch từ frame
-        getCurrentCamera()?.setEncodeDataCallBack(object : IEncodeDataCallBack {
-            override fun onEncodeData(
-                type: IEncodeDataCallBack.DataType,
-                buffer: ByteBuffer,
-                offset: Int,
-                size: Int,
-                timestamp: Long
-            ) {
-                val data = ByteArray(size)
-                buffer.get(data, offset, size)
-
-                // Giải mã mã vạch từ dữ liệu hình ảnh
-                val source = PlanarYUVLuminanceSource(data, 640, 480, 0, 0, 640, 480, false)
-                val binaryBitmap = BinaryBitmap(HybridBinarizer(source))
-                try {
-                    val result = MultiFormatReader().decode(binaryBitmap)
-                    callback.onSuccess(result.text) // Trả về chuỗi mã vạch đọc được
-                } catch (e: NotFoundException) {
-                    // Không tìm thấy mã vạch
-                }
-            }
-        })
-    }
-
    fun getCurrentCameraRequestParameters(): String? {
       val size = getCurrentCamera()?.getCameraRequest()
        if (size == null) {
@@ -566,81 +525,24 @@ internal class UVCCameraView(
     }
 
     private fun setEncodeDataCallBack() {
-        getCurrentCamera()?.setEncodeDataCallBack(object : IEncodeDataCallBack {
-            @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+        getCurrentCamera()?.setEncodeDataCallBack(object :  IEncodeDataCallBack {
             override fun onEncodeData(
                 type: IEncodeDataCallBack.DataType,
                 buffer: ByteBuffer,
                 offset: Int,
                 size: Int,
                 timestamp: Long
-            ) {
-                var barcode = ""
-                val data = ByteArray(size)
+            ) { val data = ByteArray(size)
                 buffer.get(data, offset, size)
-                
-                // Giải mã khung H.264 thành định dạng YUV
-                val yuvData = decodeH264ToYUV(data)
-                if (yuvData != null) {
-                    // Thực hiện quét mã vạch từ YUV data
-
-                    val source = PlanarYUVLuminanceSource(yuvData, width, height, 0, 0, width, height, false)
-                    val binaryBitmap = BinaryBitmap(HybridBinarizer(source))
-                    try {
-                        val result = MultiFormatReader().decode(binaryBitmap)
-                        println("Barcode/QR Code Found: ${result.text}")
-                        barcode = result.text
-                        // Nếu tìm thấy mã vạch, bạn có thể chuyển nó về Flutter qua MethodChannel nếu cần
-                    } catch (e: NotFoundException) {
-                        println("Barcode/QR Code Not Found.")
-                    }
-                }
-
-                // Gửi dữ liệu đã mã hóa về Flutter qua MethodChannel
                 val args = hashMapOf<String, Any>(
                     "type" to type.name,
                     "data" to data,
-                    "timestamp" to timestamp,
-                    "barcode" to barcode
+                    "timestamp" to timestamp
                 )
                 Handler(Looper.getMainLooper()).post {
                     mChannel.invokeMethod("onEncodeData", args)
-                }
-            }
+                }}
         })
-    }
-
-    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
-    private fun decodeH264ToYUV(h264Data: ByteArray): ByteArray? {
-        // Khởi tạo MediaCodec để giải mã H.264 sang YUV
-        val decoder = MediaCodec.createDecoderByType("video/avc")
-        val format = MediaFormat.createVideoFormat("video/avc", 640, 480)
-        decoder.configure(format, null, null, 0)
-        decoder.start()
-
-        // Đưa dữ liệu H.264 vào decoder
-        val inputBufferIndex = decoder.dequeueInputBuffer(10000)
-        if (inputBufferIndex >= 0) {
-            val inputBuffer = decoder.getInputBuffer(inputBufferIndex)
-            inputBuffer?.put(h264Data)
-            decoder.queueInputBuffer(inputBufferIndex, 0, h264Data.size, 0, 0)
-        }
-
-        // Trích xuất dữ liệu YUV từ decoder
-        val bufferInfo = MediaCodec.BufferInfo()
-        val outputBufferIndex = decoder.dequeueOutputBuffer(bufferInfo, 10000)
-        val yuvData = if (outputBufferIndex >= 0) {
-            val outputBuffer = decoder.getOutputBuffer(outputBufferIndex)
-            val data = ByteArray(bufferInfo.size)
-            outputBuffer?.get(data)
-            decoder.releaseOutputBuffer(outputBufferIndex, false)
-            data
-        } else {
-            null
-        }
-        decoder.stop()
-        decoder.release()
-        return yuvData
     }
 
 

@@ -59,20 +59,7 @@ class UVCCameraController {
         final Map<dynamic, dynamic> args = call.arguments;
         // capture H264 & AAC only
         debugPrint(args.toString());
-        debugPrint(args['barcode']);
         break;
-    }
-  }
-
-  Future<String?> scanBarcode() async {
-    try {
-      // Gọi hàm scanBarcode từ phía Android qua MethodChannel
-      String? barcode = await _cameraChannel?.invokeMethod('scanBarcode');
-      debugPrint("Barcode: $barcode");
-      return barcode;
-    } catch (e) {
-      debugPrint("Barcode scan error: $e");
-      return null;
     }
   }
 

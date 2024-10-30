@@ -20,6 +20,7 @@ import android.content.Context
 import android.graphics.SurfaceTexture
 import android.hardware.usb.UsbDevice
 import android.provider.MediaStore
+import android.util.Log
 import android.view.Surface
 import android.view.SurfaceView
 import android.view.TextureView
@@ -39,6 +40,12 @@ import com.jiangdg.uvc.IFrameCallback
 import com.jiangdg.uvc.UVCCamera
 import java.io.File
 import java.util.concurrent.TimeUnit
+import com.google.zxing.BinaryBitmap
+import com.google.zxing.MultiFormatReader
+import com.google.zxing.NotFoundException
+import com.google.zxing.PlanarYUVLuminanceSource
+import com.google.zxing.Result
+import com.google.zxing.common.HybridBinarizer
 
 /** UVC Camera
  *
@@ -56,27 +63,66 @@ class CameraUVC(ctx: Context, device: UsbDevice, private val params: Any?
 
     private val frameCallBack = IFrameCallback { frame ->
         frame?.apply {
-            frame.position(0)
+            position(0)
             val data = ByteArray(capacity())
             get(data)
+
             mCameraRequest?.apply {
                 if (data.size != previewWidth * previewHeight * 3 / 2) {
+                    Logger.e(TAG, "Dữ liệu không hợp lệ: kích thước dữ liệu ${data.size} không khớp với kích thước dự kiến ${previewWidth * previewHeight * 3 / 2}")
                     return@IFrameCallback
                 }
+
+                // Thực hiện quét mã vạch
+                scanBarcode(data, previewWidth, previewHeight)
+
                 // for preview callback
                 mPreviewDataCbList.forEach { cb ->
                     cb?.onPreviewData(data, previewWidth, previewHeight, IPreviewDataCallBack.DataFormat.NV21)
                 }
+
                 // for image
                 if (mNV21DataQueue.size >= MAX_NV21_DATA) {
                     mNV21DataQueue.removeLast()
                 }
                 mNV21DataQueue.offerFirst(data)
+
                 // for video
-                // avoid preview size changed
                 putVideoData(data)
             }
         }
+    }
+
+    private fun scanBarcode(data: ByteArray, width: Int, height: Int) {
+        // Chuyển đổi dữ liệu NV21 thành YUV cho ZXing
+        val source = PlanarYUVLuminanceSource(
+            data,
+            width,
+            height,
+            0,
+            0,
+            width,
+            height,
+            false
+        )
+        val binaryBitmap = BinaryBitmap(HybridBinarizer(source))
+
+        try {
+            val reader = MultiFormatReader()
+            val result = reader.decode(binaryBitmap)
+            // Xử lý kết quả quét mã vạch
+            handleBarcodeResult(result)
+        } catch (e: NotFoundException) {
+            Log.d("Barcode", "Không tìm thấy mã vạch trong khung hình này")
+
+            // Không tìm thấy mã vạch trong khung hình này
+        }
+    }
+
+    private fun handleBarcodeResult(result: Result) {
+        // Xử lý kết quả mã vạch, ví dụ như hiển thị lên UI hoặc thực hiện hành động nào đó
+        val barcodeValue = result.text
+        Log.d("Barcode", "Mã vạch quét được: $barcodeValue")
     }
 
     override fun getAllPreviewSizes(aspectRatio: Double?): MutableList<PreviewSize> {
